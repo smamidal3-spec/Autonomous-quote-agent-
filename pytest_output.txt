@@ -1,0 +1,27 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\mamid\vibe\quote_agents
+plugins: anyio-4.12.1, langsmith-0.7.12
+collecting ... collected 7 items
+
+tests/test_browser_25.py::test_ui_profiles_end_to_end SKIPPED (Strea...) [ 14%]
+tests/test_edge_cases.py::test_api_edge_cases FAILED                     [ 28%]
+tests/test_pipeline.py::test_pipeline_loaded PASSED                      [ 42%]
+tests/test_pipeline.py::test_high_risk_never_defaults_to_low PASSED      [ 57%]
+tests/test_pipeline.py::test_premium_sensitive_advises_discount PASSED   [ 71%]
+tests/test_pipeline.py::test_auto_approve_logic PASSED                   [ 85%]
+tests/test_pipeline.py::test_escalation_protocol PASSED                  [100%]
+
+================================== FAILURES ===================================
+_____________________________ test_api_edge_cases _____________________________
+tests\test_edge_cases.py:48: in test_api_edge_cases
+    run_test("20-Year-Old Buying \u20b950 Lakh Car on Low Salary", p2, expected_fraud_flag=True)
+tests\test_edge_cases.py:22: in run_test
+    assert is_flagged == expected_fraud_flag, f"{name}: Expected {expected_fraud_flag}, got {is_flagged}"
+E   AssertionError: 20-Year-Old Buying \u20b950 Lakh Car on Low Salary: Expected True, got False
+E   assert False == True
+=========================== short test summary info ===========================
+FAILED tests/test_edge_cases.py::test_api_edge_cases - AssertionError: 20-Yea...
+=================== 1 failed, 5 passed, 1 skipped in 13.72s ===================
+

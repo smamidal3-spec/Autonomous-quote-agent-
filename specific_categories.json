@@ -1,0 +1,65 @@
+{
+  "Gender": [
+    "Female",
+    "Male"
+  ],
+  "Marital_Status": [
+    "Widow",
+    "Dirvorced",
+    "Married",
+    "Single"
+  ],
+  "Education": [
+    "High School",
+    "Ph.D",
+    "Bachelors",
+    "College",
+    "Masters"
+  ],
+  "Sal_Range": [
+    "> ₹ 25 Lakh <= ₹ 40 Lakh",
+    "> ₹ 40 Lakh <= ₹ 60 Lakh",
+    "> ₹ 90 Lakh ",
+    "<= ₹ 25 Lakh",
+    "> ₹ 60 Lakh <= ₹ 90 Lakh"
+  ],
+  "Coverage": [
+    "Balanced",
+    "Basic",
+    "Enhanced"
+  ],
+  "Veh_Usage": [
+    "Commute",
+    "Pleasure",
+    "Business"
+  ],
+  "Annual_Miles_Range": [
+    "> 55 K",
+    "> 7.5 K & <= 15 K",
+    "> 35 K & <= 45 K",
+    "<= 7.5 K",
+    "> 15 K & <= 25 K",
+    "> 25 K & <= 35 K",
+    "> 45 K & <= 55 K"
+  ],
+  "Vehicl_Cost_Range": [
+    "> ₹ 10 Lakh <= ₹ 20 Lakh",
+    "<= ₹ 10 Lakh",
+    "> ₹ 20 Lakh <= ₹ 30 Lakh",
+    "> ₹ 30 Lakh <= ₹ 40 Lakh",
+    "> ₹ 40 Lakh "
+  ],
+  "Re_Quote": [
+    "No",
+    "Yes"
+  ],
+  "Policy_Type": [
+    "Car",
+    "Van",
+    "Truck"
+  ],
+  "Agent_Type": [
+    "EA",
+    "IA"
+  ]
+}

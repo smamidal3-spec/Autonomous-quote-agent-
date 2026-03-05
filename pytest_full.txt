@@ -1,0 +1,28 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\mamid\vibe\quote_agents
+plugins: anyio-4.12.1, langsmith-0.7.12
+collecting ... collected 7 items
+
+tests/test_browser_25.py::test_ui_profiles_end_to_end FAILED             [ 14%]
+tests/test_edge_cases.py::test_api_edge_cases PASSED                     [ 28%]
+tests/test_pipeline.py::test_pipeline_loaded PASSED                      [ 42%]
+tests/test_pipeline.py::test_high_risk_never_defaults_to_low PASSED      [ 57%]
+tests/test_pipeline.py::test_premium_sensitive_advises_discount PASSED   [ 71%]
+tests/test_pipeline.py::test_auto_approve_logic PASSED                   [ 85%]
+tests/test_pipeline.py::test_escalation_protocol PASSED                  [100%]
+
+================================== FAILURES ===================================
+_________________________ test_ui_profiles_end_to_end _________________________
+tests\test_browser_25.py:105: in test_ui_profiles_end_to_end
+    assert len(failures) == 0, f"UI Tests Failed: {failures}"
+E   AssertionError: UI Tests Failed: ['High_Risk_1: Failed UI assertion. Tier=MEDIUM, Decision=ESCALATE_TO_UNDERWRITER', 'High_Risk_2: Failed UI assertion. Tier=MEDIUM, Decision=FOLLOW_UP_AGENT', 'High_Risk_3: Failed UI assertion. Tier=MEDIUM, Decision=FOLLOW_UP_AGENT', 'High_Risk_4: Failed UI assertion. Tier=MEDIUM, Decision=FOLLOW_UP_AGENT', 'High_Risk_5: Failed UI assertion. Tier=MEDIUM, Decision=FOLLOW_UP_AGENT', 'Medium_Risk_1: Failed UI assertion. Tier=LOW, Decision=AUTO_APPROVE', 'Medium_Risk_2: Failed UI assertion. Tier=LOW, Decision=AUTO_APPROVE', 'Medium_Risk_3: Failed UI assertion. Tier=LOW, Decision=AUTO_APPROVE', 'Medium_Risk_4: Failed UI assertion. Tier=LOW, Decision=AUTO_APPROVE', 'Medium_Risk_5: Failed UI assertion. Tier=LOW, Decision=AUTO_APPROVE', 'Premium_Sensitive_1: Failed UI assertion. Tier=MEDIUM, Decision=ESCALATE_TO_UNDERWRITER', 'Premium_Sensitive_2: Failed UI assertion. Tier=MEDIUM, Decision=ESCALATE_TO_UNDERWRITER', 'Premium_Sensitive_3: Failed UI assertion. Tier=MEDIUM, Decision=ESCALATE_TO_UNDERWRITER', 'Premium_Sensitive_4: Failed UI assertion. Tier=MEDIUM, Decision=ESCALATE_TO_UNDERWRITER', 'Premium_Sensitive_5: Failed UI assertion. Tier=MEDIUM, Decision=ESCALATE_TO_UNDERWRITER']
+E   assert 15 == 0
+E    +  where 15 = len(['High_Risk_1: Failed UI assertion. Tier=MEDIUM, Decision=ESCALATE_TO_UNDERWRITER', 'High_Risk_2: Failed UI assertion. Tier=MEDIUM, Decision=FOLLOW_UP_AGENT', 'High_Risk_3: Failed UI assertion. Tier=MEDIUM, Decision=FOLLOW_UP_AGENT', 'High_Risk_4: Failed UI assertion. Tier=MEDIUM, Decision=FOLLOW_UP_AGENT', 'High_Risk_5: Failed UI assertion. Tier=MEDIUM, Decision=FOLLOW_UP_AGENT', 'Medium_Risk_1: Failed UI assertion. Tier=LOW, Decision=AUTO_APPROVE', ...])
+---------------------------- Captured stdout call -----------------------------
+\n\U0001f310 Starting Automated Browser UI Tests for 25 Profiles...\n
+=========================== short test summary info ===========================
+FAILED tests/test_browser_25.py::test_ui_profiles_end_to_end - AssertionError...
+=================== 1 failed, 6 passed in 94.06s (0:01:34) ====================
+

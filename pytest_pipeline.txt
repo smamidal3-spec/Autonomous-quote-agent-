@@ -1,0 +1,15 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\mamid\vibe\quote_agents
+plugins: anyio-4.12.1, langsmith-0.7.12
+collecting ... collected 5 items
+
+tests/test_pipeline.py::test_pipeline_loaded PASSED                      [ 20%]
+tests/test_pipeline.py::test_high_risk_never_defaults_to_low PASSED      [ 40%]
+tests/test_pipeline.py::test_premium_sensitive_advises_discount PASSED   [ 60%]
+tests/test_pipeline.py::test_auto_approve_logic PASSED                   [ 80%]
+tests/test_pipeline.py::test_escalation_protocol PASSED                  [100%]
+
+============================== 5 passed in 8.88s ==============================
+

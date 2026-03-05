@@ -1,0 +1,14 @@
+streamlit
+pandas
+joblib
+shap
+matplotlib
+xgboost
+python-dotenv
+scikit-learn
+fastapi
+uvicorn
+pydantic
+pytest
+pytest-playwright
+playwright
