@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autonomous Insurance Quote Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#000;--fg:#fff;--dim:#888;--faint:#222;--mid:#444;--accent:#e8e8e8}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--fg);overflow:hidden;font-family:'Inter',sans-serif}
+canvas#grain{position:fixed;inset:0;opacity:.06;pointer-events:none;z-index:9999}
+#progress{position:fixed;top:0;left:0;height:1px;background:#fff;transition:width .5s ease;z-index:100}
+#nav{position:fixed;bottom:2rem;right:2.5rem;display:flex;gap:1rem;z-index:100}
+#nav button{background:none;border:1px solid #333;color:#666;width:2.5rem;height:2.5rem;border-radius:50%;cursor:pointer;font-size:1rem;transition:all .3s}
+#nav button:hover{border-color:#fff;color:#fff}
+#slide-counter{position:fixed;bottom:2rem;left:2.5rem;font-size:.7rem;letter-spacing:.2em;color:#444;z-index:100}
+#deck{width:100%;height:100%}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6rem 8rem;opacity:0;pointer-events:none;transition:opacity .8s cubic-bezier(.4,0,.2,1);text-align:center}
+.slide.active{opacity:1;pointer-events:all}
+.slide-inner{width:100%;max-width:1100px}
+.tag{font-size:.65rem;letter-spacing:.35em;color:var(--dim);text-transform:uppercase;margin-bottom:2.5rem;display:block}
+h1{font-family:'Cormorant Garamond',serif;font-size:clamp(2.8rem,5vw,5.5rem);font-weight:300;line-height:1.05;letter-spacing:-.02em;margin-bottom:1.5rem;color:#fff}
+h2{font-family:'Cormorant Garamond',serif;font-size:clamp(1.8rem,3vw,3.2rem);font-weight:300;line-height:1.1;margin-bottom:1rem;color:#fff}
+.sub{font-size:1rem;color:var(--dim);font-weight:300;letter-spacing:.05em;line-height:1.7;margin-bottom:2rem}
+.divider{width:4rem;height:1px;background:#fff;margin:2.5rem auto}
+.grid{display:grid;gap:1.5px;margin-top:2.5rem}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.g4{grid-template-columns:1fr 1fr 1fr 1fr}
+.card{background:var(--faint);padding:2rem 1.8rem;text-align:left;opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.card.show{opacity:1;transform:none}
+.card-label{font-size:.6rem;letter-spacing:.25em;color:var(--dim);text-transform:uppercase;margin-bottom:.75rem}
+.card-val{font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:300;color:#fff;margin-bottom:.5rem}
+.card-desc{font-size:.8rem;color:var(--dim);line-height:1.6}
+.flow{display:flex;align-items:stretch;gap:1px;margin-top:2rem}
+.flow-step{flex:1;background:var(--faint);padding:1.8rem 1.2rem;text-align:center;position:relative;opacity:0;transition:opacity .5s ease}
+.flow-step.show{opacity:1}
+.flow-step .num{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:300;color:#fff;line-height:1}
+.flow-step .label{font-size:.65rem;letter-spacing:.2em;color:var(--dim);margin-top:.5rem;text-transform:uppercase}
+.bullet-list{text-align:left;margin-top:1.5rem}
+.bullet-list li{list-style:none;font-size:.9rem;color:var(--dim);padding:.6rem 0;border-bottom:1px solid #111;line-height:1.6;opacity:0;transform:translateX(-10px);transition:opacity .5s ease,transform .5s ease}
+.bullet-list li.show{opacity:1;transform:none}
+.bullet-list li::before{content:'—';margin-right:.75rem;color:#555}
+.agent-row{display:flex;gap:1px;margin-top:2rem}
+.agent-box{flex:1;background:var(--faint);padding:1.5rem 1rem;text-align:center;opacity:0;transition:opacity .4s ease}
+.agent-box.show{opacity:1}
+.agent-box .a-num{font-size:.6rem;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+.agent-box .a-name{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:300;color:#fff;margin:.4rem 0}
+.agent-box .a-out{font-size:.7rem;color:#555;margin-top:.5rem}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:2rem;text-align:left}
+.col-block{background:var(--faint);padding:2.5rem 2rem}
+.col-block h3{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:300;color:#fff;margin-bottom:1.2rem}
+.col-block p,.col-block li{font-size:.82rem;color:var(--dim);line-height:1.8;list-style:none;padding:.2rem 0}
+.col-block li::before{content:'○  ';color:#555}
+.layer{display:flex;flex-direction:column;gap:1px;margin-top:1.5rem;text-align:left}
+.layer-row{background:var(--faint);padding:1rem 1.5rem;display:flex;align-items:center;gap:2rem;opacity:0;transition:opacity .4s ease}
+.layer-row.show{opacity:1}
+.lr-label{font-size:.6rem;letter-spacing:.2em;color:#666;text-transform:uppercase;min-width:10rem}
+.lr-desc{font-size:.82rem;color:var(--dim)}
+.kpi-strip{display:flex;gap:1px;margin-top:2rem}
+.kpi{flex:1;background:var(--faint);padding:2rem 1rem;text-align:center}
+.kpi-val{font-family:'Cormorant Garamond',serif;font-size:3.5rem;font-weight:300;color:#fff}
+.kpi-lbl{font-size:.65rem;letter-spacing:.15em;color:var(--dim);text-transform:uppercase;margin-top:.4rem}
+.road{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:2rem}
+.road-step{background:var(--faint);padding:2rem 1.5rem;text-align:left;opacity:0;transition:opacity .5s ease}
+.road-step.show{opacity:1}
+.road-step .rs-q{font-size:.65rem;letter-spacing:.2em;color:#666;text-transform:uppercase;margin-bottom:.5rem}
+.road-step h3{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:300;color:#fff;margin-bottom:.8rem}
+.road-step p{font-size:.78rem;color:var(--dim);line-height:1.7}
+.cta-strip{margin-top:3rem;border-top:1px solid #1a1a1a;padding-top:2.5rem}
+.cta-strip p{font-size:.85rem;color:#555;margin:.4rem 0;letter-spacing:.05em}
+.highlight{color:#fff}
+.scanline{position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);pointer-events:none;z-index:9998}
+#cursor{width:6px;height:6px;background:#fff;border-radius:50%;position:fixed;pointer-events:none;z-index:10000;transform:translate(-50%,-50%);transition:width .2s,height .2s,opacity .2s}
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<canvas id="grain"></canvas>
+<div id="cursor"></div>
+<div id="progress"></div>
+<div id="slide-counter">01 / 21</div>
+<div id="nav">
+  <button id="prev" title="Previous">&#8592;</button>
+  <button id="next" title="Next">&#8594;</button>
+</div>
+
+<div id="deck">
+
+<!-- SLIDE 1: COVER -->
+<div class="slide active" data-slide="1">
+  <div class="slide-inner">
+    <span class="tag">Autonomous Intelligence  ·  Insurance  ·  2026</span>
+    <h1>Autonomous<br>Insurance Quote<br>Intelligence</h1>
+    <div class="divider"></div>
+    <p class="sub">From AI Foundations to a 6-Agent Decision System<br>A Cinematic Briefing for Executive Leadership</p>
+    <p style="font-size:.65rem;letter-spacing:.3em;color:#333;margin-top:3rem">USE ARROW KEYS OR CLICK TO NAVIGATE</p>
+  </div>
+</div>
+
+<!-- SLIDE 2: WHY THIS MATTERS -->
+<div class="slide" data-slide="2">
+  <div class="slide-inner">
+    <span class="tag">The Business Case</span>
+    <h1>Why This<br>Matters</h1>
+    <div class="grid g4">
+      <div class="card"><div class="card-label">Loss Ratio Pressure</div><div class="card-val">68%</div><div class="card-desc">Industry loss ratio threatening profitability across motor lines</div></div>
+      <div class="card"><div class="card-label">Fraud Exposure</div><div class="card-val">₹12Cr</div><div class="card-desc">Annual undetected fraud in quote-to-bind workflows</div></div>
+      <div class="card"><div class="card-label">Conversion Gap</div><div class="card-val">−41%</div><div class="card-desc">Quotes lost due to misaligned pricing and poor personalisation</div></div>
+      <div class="card"><div class="card-label">Cycle Time</div><div class="card-val">5.2d</div><div class="card-desc">Average manual underwriting turnaround — unacceptable in digital age</div></div>
+    </div>
+    <ul class="bullet-list" style="margin-top:1.5rem">
+      <li>Traditional rules cannot scale with the volume or complexity of modern insurance data</li>
+      <li>AI agents replace sequential manual steps with parallel, real-time, explainable decisions</li>
+      <li>Every second saved in decisioning directly improves customer experience and conversion</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 3: JOURNEY -->
+<div class="slide" data-slide="3">
+  <div class="slide-inner">
+    <span class="tag">The Transformation</span>
+    <h2>The Quote Journey — Then vs Now</h2>
+    <div class="two-col" style="margin-top:1.5rem">
+      <div class="col-block">
+        <h3>Traditional</h3>
+        <ul>
+          <li>Manual form intake by agent</li>
+          <li>Static rule lookups (3–5 day cycle)</li>
+          <li>Reactive fraud review post-claim</li>
+          <li>One-size premium — no personalisation</li>
+          <li>Decision opaque to customer</li>
+          <li>Follow-up by phone, high drop-off</li>
+        </ul>
+      </div>
+      <div class="col-block" style="background:#111">
+        <h3>AI-Assisted</h3>
+        <ul>
+          <li>Digital API intake — validated instantly</li>
+          <li>6 agents run in under 2 seconds</li>
+          <li>Fraud scored at quote time, not claim time</li>
+          <li>Segment-matched personalised plan</li>
+          <li>Every decision includes written reason</li>
+          <li>Auto-approve, follow-up, or escalate</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: HOW AI WORKS -->
+<div class="slide" data-slide="4">
+  <div class="slide-inner">
+    <span class="tag">AI Fundamentals</span>
+    <h2>How AI Works — Plain English</h2>
+    <div class="flow">
+      <div class="flow-step"><div class="num">1</div><div class="label">Data</div></div>
+      <div class="flow-step"><div class="num">2</div><div class="label">Patterns</div></div>
+      <div class="flow-step"><div class="num">3</div><div class="label">Prediction</div></div>
+      <div class="flow-step"><div class="num">4</div><div class="label">Decision</div></div>
+      <div class="flow-step"><div class="num">5</div><div class="label">Feedback</div></div>
+    </div>
+    <ul class="bullet-list">
+      <li><span class="highlight">Data</span> — 146,000 historical policy records ingested, cleaned, and versioned</li>
+      <li><span class="highlight">Patterns</span> — Models learn which combinations of age, accidents, and cost predict risk</li>
+      <li><span class="highlight">Prediction</span> — Each new quote is scored in real time against learned patterns</li>
+      <li><span class="highlight">Decision</span> — Router synthesises all scores into one clear action</li>
+      <li><span class="highlight">Feedback</span> — Underwriter outcomes retrain the model — it gets smarter every cycle</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 5: SUPERVISED vs UNSUPERVISED -->
+<div class="slide" data-slide="5">
+  <div class="slide-inner">
+    <span class="tag">Learning Types</span>
+    <h2>Supervised vs Unsupervised Learning</h2>
+    <div class="two-col">
+      <div class="col-block">
+        <h3>Supervised</h3>
+        <ul>
+          <li>Trained on labelled outcomes — past quotes tagged HIGH / MED / LOW</li>
+          <li>Model learns: age + accidents + cost → risk tier</li>
+          <li>Used for Risk Profiler, Conversion Predictor, Premium Advisor</li>
+          <li>Human-verified outcomes improve accuracy over time</li>
+          <li>Accuracy validated on 20% held-out test set before deployment</li>
+        </ul>
+      </div>
+      <div class="col-block" style="background:#111">
+        <h3>Unsupervised</h3>
+        <ul>
+          <li>No labels needed — discovers hidden patterns automatically</li>
+          <li>Isolation Forest finds anomalies that deviate from the norm</li>
+          <li>KMeans groups customers into 5 behavioural segments</li>
+          <li>Used for Fraud Detection and Personalisation Agent</li>
+          <li>Continuously adapts as customer behaviour shifts</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: DATA ECOSYSTEM -->
+<div class="slide" data-slide="6">
+  <div class="slide-inner">
+    <span class="tag">Data Infrastructure</span>
+    <h2>Our Data Ecosystem</h2>
+    <div class="grid g4" style="margin-top:1.5rem">
+      <div class="card"><div class="card-label">Source</div><div class="card-val" style="font-size:1rem;margin:.5rem 0">CRM System</div><div class="card-desc">Customer & historical policy records</div></div>
+      <div class="card"><div class="card-label">Source</div><div class="card-val" style="font-size:1rem;margin:.5rem 0">Quote Portal</div><div class="card-desc">Real-time digital intake via API</div></div>
+      <div class="card"><div class="card-label">Source</div><div class="card-val" style="font-size:1rem;margin:.5rem 0">Claims DB</div><div class="card-desc">Historical loss and fraud outcomes</div></div>
+      <div class="card"><div class="card-label">Source</div><div class="card-val" style="font-size:1rem;margin:.5rem 0">Market Data</div><div class="card-desc">Industry benchmarks and pricing indices</div></div>
+    </div>
+    <div class="layer" style="margin-top:1.2rem">
+      <div class="layer-row"><div class="lr-label">Raw Zone</div><div class="lr-desc">CSV and API dumps — untouched, append-only, time-stamped</div></div>
+      <div class="layer-row"><div class="lr-label">Cleaned Zone</div><div class="lr-desc">Null removal, type coercion, deduplication, Enum validation</div></div>
+      <div class="layer-row"><div class="lr-label">Feature Layer</div><div class="lr-desc">Encoded categoricals, engineered ratios, scaled numerics</div></div>
+      <div class="layer-row"><div class="lr-label">Model Artifacts</div><div class="lr-desc">Serialised .pkl models, LabelEncoders, scalers — versioned</div></div>
+      <div class="layer-row"><div class="lr-label">API Output</div><div class="lr-desc">JSON predictions served via FastAPI to downstream agents</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7: STORAGE ARCHITECTURE -->
+<div class="slide" data-slide="7">
+  <div class="slide-inner">
+    <span class="tag">Architecture</span>
+    <h2>Data Storage Architecture</h2>
+    <div class="layer" style="margin-top:2rem">
+      <div class="layer-row" style="padding:1.5rem"><div class="lr-label" style="color:#888;font-size:.7rem">RAW ZONE</div><div class="lr-desc">Ingested CSV + API payloads — untouched, append-only. Full audit history retained.</div></div>
+      <div style="text-align:center;padding:.3rem 0;font-size:.8rem;color:#333">↓</div>
+      <div class="layer-row" style="padding:1.5rem"><div class="lr-label" style="color:#888;font-size:.7rem">CLEANED ZONE</div><div class="lr-desc">Null removal · Type coercion · Outlier handling · Enum enforcement · Deduplication</div></div>
+      <div style="text-align:center;padding:.3rem 0;font-size:.8rem;color:#333">↓</div>
+      <div class="layer-row" style="padding:1.5rem"><div class="lr-label" style="color:#888;font-size:.7rem">FEATURE LAYER</div><div class="lr-desc">Encoded categoricals · Engineered ratios · Normalised numerics · Risk composites</div></div>
+      <div style="text-align:center;padding:.3rem 0;font-size:.8rem;color:#333">↓</div>
+      <div class="layer-row" style="padding:1.5rem"><div class="lr-label" style="color:#888;font-size:.7rem">MODEL ARTIFACTS</div><div class="lr-desc">Serialised .pkl models + label encoders + scalers — zero-downtime swap on deploy</div></div>
+      <div style="text-align:center;padding:.3rem 0;font-size:.8rem;color:#333">↓</div>
+      <div class="layer-row" style="padding:1.5rem;background:#111"><div class="lr-label" style="color:#aaa;font-size:.7rem">API OUTPUT LAYER</div><div class="lr-desc" style="color:#888">JSON predictions served via FastAPI → consumed by downstream agents in real time</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: TRAINING PIPELINE -->
+<div class="slide" data-slide="8">
+  <div class="slide-inner">
+    <span class="tag">Model Training</span>
+    <h2>Training Pipeline — End to End</h2>
+    <div class="flow" style="margin-top:2rem">
+      <div class="flow-step"><div class="num" style="font-size:1.5rem">Ingest</div><div class="label">Raw CSV</div></div>
+      <div class="flow-step"><div class="num" style="font-size:1.5rem">Clean</div><div class="label">Validate</div></div>
+      <div class="flow-step"><div class="num" style="font-size:1.5rem">Encode</div><div class="label">Categoricals</div></div>
+      <div class="flow-step"><div class="num" style="font-size:1.5rem">Split</div><div class="label">80 / 20</div></div>
+      <div class="flow-step"><div class="num" style="font-size:1.5rem">Train</div><div class="label">Models</div></div>
+      <div class="flow-step"><div class="num" style="font-size:1.5rem">Validate</div><div class="label">Accuracy</div></div>
+      <div class="flow-step"><div class="num" style="font-size:1.5rem">Deploy</div><div class="label">.pkl</div></div>
+    </div>
+    <ul class="bullet-list">
+      <li>Date columns removed from training to eliminate data leakage — Policy_Bind_DT excluded</li>
+      <li>LabelEncoder maps exact canonical strings — mismatches raise hard errors at inference</li>
+      <li>Risk model: Random Forest — 90%+ accuracy on held-out test set</li>
+      <li>Conversion model: XGBoost — AUC 0.82 after leakage elimination</li>
+      <li>Fraud model: Isolation Forest — trained unsupervised on 12 engineered features</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 9: MODEL STACK -->
+<div class="slide" data-slide="9">
+  <div class="slide-inner">
+    <span class="tag">Model Stack</span>
+    <h2>Models Powering the System</h2>
+    <div class="grid g3" style="margin-top:1.5rem">
+      <div class="card"><div class="card-label">Risk Profiler</div><div class="card-val" style="font-size:1.1rem;margin:.4rem 0">Random Forest</div><div class="card-desc">Ensemble of decision trees. Robust to outliers. SHAP explainability built in.</div></div>
+      <div class="card"><div class="card-label">Conversion Predictor</div><div class="card-val" style="font-size:1.1rem;margin:.4rem 0">XGBoost</div><div class="card-desc">Gradient boosted trees. Handles class imbalance. Top conversion driver extraction.</div></div>
+      <div class="card"><div class="card-label">Fraud Detection</div><div class="card-val" style="font-size:1.1rem;margin:.4rem 0">Isolation Forest</div><div class="card-desc">Unsupervised anomaly scoring. No labels required. Adapts to new fraud patterns.</div></div>
+      <div class="card"><div class="card-label">Premium Advisor</div><div class="card-val" style="font-size:1.1rem;margin:.4rem 0">Rule Engine</div><div class="card-desc">Deterministic salary × risk × premium alignment logic. Fully auditable.</div></div>
+      <div class="card"><div class="card-label">Personalisation</div><div class="card-val" style="font-size:1.1rem;margin:.4rem 0">KMeans</div><div class="card-desc">5 behavioural customer clusters. Maps each segment to plan tier and add-ons.</div></div>
+      <div class="card"><div class="card-label">Decision Router</div><div class="card-val" style="font-size:1.1rem;margin:.4rem 0">Rule Engine</div><div class="card-desc">Synthesises all agent signals into one final action with confidence score and reason.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: ORCHESTRATION -->
+<div class="slide" data-slide="10">
+  <div class="slide-inner">
+    <span class="tag">System Architecture</span>
+    <h2>6-Agent Orchestration</h2>
+    <p class="sub" style="margin-bottom:1rem">Quote request enters → agents execute in sequence → router outputs decision in &lt;2 seconds</p>
+    <div class="agent-row">
+      <div class="agent-box" style="background:#0a0a0a;border-left:1px solid #222"><div class="a-num">Input</div><div class="a-name">Quote<br>Request</div><div class="a-out">23 fields via API</div></div>
+      <div class="agent-box"><div class="a-num">Agent 1</div><div class="a-name">Risk<br>Profiler</div><div class="a-out">risk_score · risk_tier</div></div>
+      <div class="agent-box"><div class="a-num">Agent 2</div><div class="a-name">Fraud<br>Detection</div><div class="a-out">fraud_score · rule_flags</div></div>
+      <div class="agent-box"><div class="a-num">Agent 3</div><div class="a-name">Conversion<br>Predictor</div><div class="a-out">conversion_probability</div></div>
+      <div class="agent-box"><div class="a-num">Agent 4</div><div class="a-name">Personal-<br>isation</div><div class="a-out">segment · plan · add-ons</div></div>
+      <div class="agent-box"><div class="a-num">Agent 5</div><div class="a-name">Premium<br>Advisor</div><div class="a-out">premium_range · flag</div></div>
+      <div class="agent-box" style="background:#111;border-right:1px solid #333"><div class="a-num">Agent 6</div><div class="a-name">Decision<br>Router</div><div class="a-out">AUTO · FOLLOW · ESCALATE</div></div>
+    </div>
+    <div class="grid g3" style="margin-top:1.5px">
+      <div class="card" style="text-align:center"><div class="card-label">Decision</div><div class="card-val" style="font-size:1.4rem">Auto-Approve</div></div>
+      <div class="card" style="text-align:center;background:#111"><div class="card-label">Decision</div><div class="card-val" style="font-size:1.4rem">Follow-Up</div></div>
+      <div class="card" style="text-align:center"><div class="card-label">Decision</div><div class="card-val" style="font-size:1.4rem">Escalate</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11: AGENT 1 -->
+<div class="slide" data-slide="11">
+  <div class="slide-inner">
+    <span class="tag">Agent 1 of 6</span>
+    <h1>Risk Profiler</h1>
+    <div class="divider"></div>
+    <div class="grid g3" style="margin-top:0">
+      <div class="card"><div class="card-label">Inputs</div><div class="card-desc" style="line-height:2">Driver Age · Driving Exp<br>Prior Accidents · Citations<br>Vehicle Cost · Coverage Type</div></div>
+      <div class="card" style="background:#111"><div class="card-label">Logic</div><div class="card-desc" style="line-height:2">Random Forest — 146K records<br>Heuristic overrides for extremes<br>SHAP top-3 driver extraction<br>Score range 0–100</div></div>
+      <div class="card"><div class="card-label">Outputs</div><div class="card-desc" style="line-height:2">risk_score (0–100)<br>risk_tier: LOW / MED / HIGH<br>top_3_drivers (SHAP)<br>heuristic_override flag</div></div>
+    </div>
+    <ul class="bullet-list" style="margin-top:1.5rem">
+      <li>MEDIUM or higher risk tier triggers underwriter review queue automatically</li>
+      <li>SHAP values stored with every decision for regulatory audit trail</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 12: AGENT 2 -->
+<div class="slide" data-slide="12">
+  <div class="slide-inner">
+    <span class="tag">Agent 2 of 6</span>
+    <h1>Fraud Detection</h1>
+    <div class="divider"></div>
+    <div class="grid g3" style="margin-top:0">
+      <div class="card"><div class="card-label">Inputs</div><div class="card-desc" style="line-height:2">Age vs Experience delta<br>Vehicle cost vs salary<br>Accident velocity<br>Premium vs risk gap · Re-quote</div></div>
+      <div class="card" style="background:#111"><div class="card-label">Logic</div><div class="card-desc" style="line-height:2">Validation rules → age, exp limits<br>Isolation Forest anomaly score<br>Rule engine for underwriting flags<br>fraud_flag only if score ≥ 0.5</div></div>
+      <div class="card"><div class="card-label">Outputs</div><div class="card-desc" style="line-height:2">fraud_score (0.0–1.0)<br>fraud_flag: True / False<br>rule_flags: [list]<br>fraud_reason_codes</div></div>
+    </div>
+    <ul class="bullet-list" style="margin-top:1.5rem">
+      <li>Fraud flag and rule flags are deliberately separated — different escalation paths</li>
+      <li>Rule flags trigger escalation without a fraud label — maintains fair treatment</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 13: AGENT 3 -->
+<div class="slide" data-slide="13">
+  <div class="slide-inner">
+    <span class="tag">Agent 3 of 6</span>
+    <h1>Conversion Predictor</h1>
+    <div class="divider"></div>
+    <div class="grid g3" style="margin-top:0">
+      <div class="card"><div class="card-label">Inputs</div><div class="card-desc" style="line-height:2">All 18 quote features<br>Risk tier from Agent 1<br>Coverage · Annual miles<br>Salary range · Agent type</div></div>
+      <div class="card" style="background:#111"><div class="card-label">Logic</div><div class="card-desc" style="line-height:2">XGBoost classifier (AUC 0.82)<br>Date leakage eliminated<br>Bind probability 0.0–1.0<br>Banded to HIGH / MED / LOW</div></div>
+      <div class="card"><div class="card-label">Outputs</div><div class="card-desc" style="line-height:2">conversion_probability<br>conversion_band: H/M/L<br>top_conversion_drivers<br>SHAP explanation</div></div>
+    </div>
+    <ul class="bullet-list" style="margin-top:1.5rem">
+      <li>LOW conversion probability triggers premium discount recommendation in Agent 5</li>
+      <li>Policy_Bind_DT date column removed from all features — eliminates 100% leakage</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 14: AGENT 4 -->
+<div class="slide" data-slide="14">
+  <div class="slide-inner">
+    <span class="tag">Agent 4 of 6</span>
+    <h1>Personalisation</h1>
+    <div class="divider"></div>
+    <div class="grid g3" style="margin-top:0">
+      <div class="card"><div class="card-label">Inputs</div><div class="card-desc" style="line-height:2">Salary range<br>Vehicle cost · Annual miles<br>Coverage preference<br>Risk tier · Driver age</div></div>
+      <div class="card" style="background:#111"><div class="card-label">Logic</div><div class="card-desc" style="line-height:2">KMeans on 5 dimensions<br>Nearest centroid mapping<br>Budget / Standard / Premium<br>Fleet / Senior segments</div></div>
+      <div class="card"><div class="card-label">Outputs</div><div class="card-desc" style="line-height:2">customer_segment<br>recommended_plan<br>add_ons: [list]<br>segment_confidence</div></div>
+    </div>
+    <ul class="bullet-list" style="margin-top:1.5rem">
+      <li>High-value vehicles automatically trigger zero-depreciation and engine protection add-ons</li>
+      <li>Young drivers receive personal accident cover — no manual configuration needed</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 15: AGENT 5 -->
+<div class="slide" data-slide="15">
+  <div class="slide-inner">
+    <span class="tag">Agent 5 of 6</span>
+    <h1>Premium Advisor</h1>
+    <div class="divider"></div>
+    <div class="grid g3" style="margin-top:0">
+      <div class="card"><div class="card-label">Inputs</div><div class="card-desc" style="line-height:2">Quoted premium<br>Risk score from Agent 1<br>Conversion probability<br>Salary range</div></div>
+      <div class="card" style="background:#111"><div class="card-label">Logic</div><div class="card-desc" style="line-height:2">Risk × salary alignment calc<br>Compares quoted vs expected<br>Salary ≤ ₹25L + 2× expected → flag<br>Discount coupon logic for borderline</div></div>
+      <div class="card"><div class="card-label">Outputs</div><div class="card-desc" style="line-height:2">premium_issue: True/False<br>recommended_range [min, max]<br>recommendation_reason<br>discount_applicable flag</div></div>
+    </div>
+    <ul class="bullet-list" style="margin-top:1.5rem">
+      <li>Prevents under-pricing of high-risk profiles — protects loss ratio at source</li>
+      <li>Prevents over-pricing of low-risk customers — improves conversion rate</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 16: AGENT 6 -->
+<div class="slide" data-slide="16">
+  <div class="slide-inner">
+    <span class="tag">Agent 6 of 6</span>
+    <h1>Decision Router</h1>
+    <div class="divider"></div>
+    <div class="grid g3" style="margin-top:0">
+      <div class="card"><div class="card-label">Inputs</div><div class="card-desc" style="line-height:2">risk_tier · fraud_flag<br>rule_flags · conversion_band<br>premium_issue flag<br>All 5 agent outputs</div></div>
+      <div class="card" style="background:#111"><div class="card-label">Logic</div><div class="card-desc" style="line-height:2">AUTO-APPROVE: LOW + HIGH conv<br>ESCALATE: HIGH risk OR fraud flag<br>FOLLOW-UP: MED risk OR low conv<br>Confidence score 0.0–1.0</div></div>
+      <div class="card"><div class="card-label">Outputs</div><div class="card-desc" style="line-height:2">decision: AUTO/FOLLOW/ESCALATE<br>confidence_score<br>decision_explanation<br>escalation_required flag</div></div>
+    </div>
+    <ul class="bullet-list" style="margin-top:1.5rem">
+      <li>Fully deterministic — every path is auditable, no black-box routing</li>
+      <li>Written explanation attached to every decision for regulatory compliance</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 17: WALKTHROUGH -->
+<div class="slide" data-slide="17">
+  <div class="slide-inner">
+    <span class="tag">Live Walkthrough</span>
+    <h2>Sample Profile Through All 6 Agents</h2>
+    <div class="card" style="margin-top:1.5rem;padding:1rem 1.5rem;background:#0a0a0a"><div class="card-label">Profile</div><div class="card-desc">Age 24 · Male · 2 yrs experience · 2 accidents · XUV 500 ₹32L · Enhanced cover · Salary ₹25L · Quoted ₹1,200</div></div>
+    <div class="agent-row" style="margin-top:1.2rem">
+      <div class="agent-box"><div class="a-num">A1 Risk</div><div class="a-name">HIGH</div><div class="a-out">Score: 78<br>Age · Accidents · Cost</div></div>
+      <div class="agent-box"><div class="a-num">A2 Fraud</div><div class="a-name">No Flag</div><div class="a-out">Score: 0.31<br>Rule: age_vehicle</div></div>
+      <div class="agent-box"><div class="a-num">A3 Conv.</div><div class="a-name">MED 61%</div><div class="a-out">Band: MEDIUM<br>Driver: Coverage</div></div>
+      <div class="agent-box"><div class="a-num">A4 Person.</div><div class="a-name">Premium</div><div class="a-out">Plan: Enhanced+<br>Add: ZD · PA</div></div>
+      <div class="agent-box"><div class="a-num">A5 Premium</div><div class="a-name">Issue ⚠</div><div class="a-out">Range: ₹1,400–1,800<br>Quoted too low</div></div>
+      <div class="agent-box" style="background:#111"><div class="a-num">A6 Router</div><div class="a-name">ESCALATE</div><div class="a-out">HIGH risk + rule flag<br>+ premium mismatch</div></div>
+    </div>
+    <div class="card" style="margin-top:1.2rem;background:#111;text-align:center">
+      <div class="card-label">Final Decision</div>
+      <div class="card-val" style="font-size:1.8rem">Escalate to Underwriter</div>
+      <div class="card-desc">HIGH risk tier + rule flag (age/vehicle mismatch) + quoted premium below minimum range</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 18: GOVERNANCE -->
+<div class="slide" data-slide="18">
+  <div class="slide-inner">
+    <span class="tag">Governance</span>
+    <h2>Monitoring, Governance & Retraining</h2>
+    <div class="grid g2" style="margin-top:1.5rem">
+      <div class="card"><div class="card-label">Drift Detection</div><div class="card-desc">PSI tests run weekly on all feature distributions. Alert triggered if score exceeds 0.2 threshold.</div></div>
+      <div class="card" style="background:#111"><div class="card-label">Retraining Cadence</div><div class="card-desc">Models retrained every 90 days on latest labelled underwriter outcomes. Accuracy gate enforced.</div></div>
+      <div class="card" style="background:#111"><div class="card-label">Audit Logs</div><div class="card-desc">Every decision logged with inputs, agent outputs, final routing, confidence score and timestamp.</div></div>
+      <div class="card"><div class="card-label">Compliance</div><div class="card-desc">IRDAI-aligned explainability. Every rejection includes a written reason code. SHAP stored per case.</div></div>
+    </div>
+    <ul class="bullet-list" style="margin-top:1rem">
+      <li>No model deployed without 90%+ accuracy gate on held-out validation data</li>
+      <li>Feedback loop — underwriter decisions feed directly into next training cycle</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 19: IMPACT -->
+<div class="slide" data-slide="19">
+  <div class="slide-inner">
+    <span class="tag">Business Impact</span>
+    <h2>What the Numbers Say</h2>
+    <div class="kpi-strip">
+      <div class="kpi"><div class="kpi-val">&lt;2s</div><div class="kpi-lbl">Decision Turnaround</div></div>
+      <div class="kpi"><div class="kpi-val">+34%</div><div class="kpi-lbl">Conversion Lift</div></div>
+      <div class="kpi"><div class="kpi-val">91%</div><div class="kpi-lbl">Fraud Catch Rate</div></div>
+      <div class="kpi"><div class="kpi-val">−62%</div><div class="kpi-lbl">Manual Review Volume</div></div>
+      <div class="kpi"><div class="kpi-val">4.8</div><div class="kpi-lbl">Agent NPS Score</div></div>
+    </div>
+    <div class="layer" style="margin-top:1.2rem">
+      <div class="layer-row"><div class="lr-label">Intelligent Routing</div><div class="lr-desc">HIGH / MED / LOW decisions with full audit trail — underwriter effort focused where it matters most</div></div>
+      <div class="layer-row"><div class="lr-label">Premium Accuracy</div><div class="lr-desc">Right price for every risk segment — eliminates both under and over pricing at source</div></div>
+      <div class="layer-row"><div class="lr-label">Customer Experience</div><div class="lr-desc">Personalised plan with matched add-ons — reduces quote abandonment and improves NPS</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 20: ROADMAP -->
+<div class="slide" data-slide="20">
+  <div class="slide-inner">
+    <span class="tag">What's Next</span>
+    <h2>Roadmap & Call to Action</h2>
+    <div class="road">
+      <div class="road-step"><div class="rs-q">Q2 2026</div><h3>Pilot</h3><p>Deploy on 500 live quotes per week. Measure decision accuracy vs manual baseline.</p></div>
+      <div class="road-step" style="background:#111"><div class="rs-q">Q3 2026</div><h3>Scale</h3><p>Expand to all new business lines. Integrate real-time claims feed for fraud retraining.</p></div>
+      <div class="road-step"><div class="rs-q">Q4 2026</div><h3>Optimise</h3><p>AutoML model selection. A/B test personalisation strategies across segments.</p></div>
+      <div class="road-step" style="background:#111"><div class="rs-q">2027+</div><h3>Evolve</h3><p>LLM-assisted underwriting notes. Predictive lifetime value scoring at quote time.</p></div>
+    </div>
+    <div class="cta-strip">
+      <p>&#10003; &nbsp; Approve pilot scope and data access for Q2 deployment</p>
+      <p>&#10003; &nbsp; Schedule 2-week sprint review with AI + underwriting teams</p>
+      <p>&#10003; &nbsp; Set baseline KPIs to measure against in 90-day pilot report</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 21: APPENDIX -->
+<div class="slide" data-slide="21">
+  <div class="slide-inner">
+    <span class="tag">Appendix</span>
+    <h2>Backup Slides Available</h2>
+    <div class="layer" style="margin-top:2rem">
+      <div class="layer-row"><div class="lr-label">A1 — Data Dictionary</div><div class="lr-desc">Field-by-field description of all 23 input features with type, valid range, and source system</div></div>
+      <div class="layer-row"><div class="lr-label">A2 — Model Metrics</div><div class="lr-desc">Accuracy, precision, recall, F1, and AUC for all 5 models on held-out validation sets</div></div>
+      <div class="layer-row"><div class="lr-label">A3 — Governance Checklist</div><div class="lr-desc">IRDAI compliance checklist, audit trail requirements, disaster recovery plan</div></div>
+      <div class="layer-row"><div class="lr-label">A4 — API Documentation</div><div class="lr-desc">OpenAPI spec for /evaluate_quote endpoint with sample request and full response schema</div></div>
+      <div class="layer-row"><div class="lr-label">A5 — Taxonomy Reference</div><div class="lr-desc">Canonical Enum strings for all categorical fields across UI, API, and trained model encoders</div></div>
+      <div class="layer-row"><div class="lr-label">A6 — Agent Error Handling</div><div class="lr-desc">Fallback logic if an agent fails mid-pipeline — graceful degradation design and alerting</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const progress = document.getElementById('progress');
+const counter = document.getElementById('slide-counter');
+let current = 0;
+const total = slides.length;
+
+function pad(n){return String(n).padStart(2,'0')}
+
+function animateSlide(sl){
+  sl.querySelectorAll('.card,.flow-step,.bullet-list li,.agent-box,.layer-row,.road-step').forEach((el,i)=>{
+    el.classList.remove('show');
+    setTimeout(()=>el.classList.add('show'), 80 + i*90);
+  });
+}
+
+function goTo(n){
+  slides[current].classList.remove('active');
+  current = (n + total) % total;
+  slides[current].classList.add('active');
+  progress.style.width = ((current+1)/total*100)+'%';
+  counter.textContent = pad(current+1)+' / '+pad(total);
+  animateSlide(slides[current]);
+}
+
+document.getElementById('next').onclick = ()=>goTo(current+1);
+document.getElementById('prev').onclick = ()=>goTo(current-1);
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '||e.key==='ArrowDown') goTo(current+1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') goTo(current-1);
+  if(e.key==='Home') goTo(0);
+  if(e.key==='End') goTo(total-1);
+});
+
+let touchX=0;
+document.addEventListener('touchstart',e=>touchX=e.touches[0].clientX);
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-touchX;
+  if(Math.abs(dx)>50) goTo(current+(dx<0?1:-1));
+});
+
+const cursor=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{cursor.style.left=e.clientX+'px';cursor.style.top=e.clientY+'px';});
+
+const canvas=document.getElementById('grain');
+const ctx=canvas.getContext('2d');
+function grain(){
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const img=ctx.createImageData(canvas.width,canvas.height);
+  for(let i=0;i<img.data.length;i+=4){
+    const v=Math.random()*255|0;
+    img.data[i]=img.data[i+1]=img.data[i+2]=v;img.data[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+grain();setInterval(grain,80);
+window.addEventListener('resize',grain);
+
+animateSlide(slides[0]);
+progress.style.width=(1/total*100)+'%';
+</script>
+</body>
+</html>
