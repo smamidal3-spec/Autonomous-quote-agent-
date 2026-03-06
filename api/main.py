@@ -1,9 +1,20 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents.schema import QuoteInput, PipelineOutput
 from agents.pipeline import MultiAgentPipeline
 
 app = FastAPI(title="Autonomous Quote Agents API", version="1.0")
+
+# Add CORS Middleware so the Next.js frontend can communicate with the backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins (can be restricted to frontend domain later)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 try:
     pipeline = MultiAgentPipeline(models_dir="models")
 except Exception as e:
