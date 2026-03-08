@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+venv*/
+node_modules/
+.pytest_cache/
+.coverage
+*.log
+*.sqlite
+*.db
+
+# Ignore auto-generated text/json files from scripts
+*.txt
+*.json
+!requirements.txt
+
+# Next.js
+.next/
+*.zip
+*.sst
+*.node
+*.pkl
+**/node_modules/
+**/.next/
