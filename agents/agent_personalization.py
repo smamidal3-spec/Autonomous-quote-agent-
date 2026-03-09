@@ -4,17 +4,25 @@ Position in pipeline: After Conversion Predictor (Step 4 of 6)
 Recommends insurance plans and add-ons using K-Means customer segmentation.
 """
 
-import pandas as pd
-import numpy as np
-import joblib
+import logging
 import os
 import time
-import logging
+
+import joblib
+import pandas as pd
+
+from agents.label_normalization import (
+    coverage_to_numeric,
+    is_high_vehicle_cost,
+    miles_to_numeric,
+    salary_to_numeric,
+    vehicle_cost_to_numeric,
+)
 from agents.schema import (
-    QuoteInput,
-    RiskOutput,
     ConversionOutput,
     PersonalizationOutput,
+    QuoteInput,
+    RiskOutput,
 )
 
 logger = logging.getLogger("PersonalizationAgent")
@@ -49,46 +57,22 @@ class CustomerPersonalizationAgent:
             )
             self.loaded = True
             logger.info("Personalization models loaded successfully")
-        except Exception as e:
+        except Exception as exc:
             logger.warning(
-                f"Personalization models not found: {e}. Agent will use defaults."
+                f"Personalization models not found: {exc}. Agent will use defaults."
             )
             self.loaded = False
 
     def _extract_features(self, quote: QuoteInput, risk: RiskOutput) -> pd.DataFrame:
         """Extract clustering features from quote data."""
-        sal_map = {
-            "<= ₹ 25 Lakh": 2.5,
-            "> ₹ 25 Lakh <= ₹ 40 Lakh": 3.75,
-            "> ₹ 40 Lakh <= ₹ 60 Lakh": 6.25,
-            "> ₹ 60 Lakh <= ₹ 90 Lakh": 8.75,
-            "> ₹ 90 Lakh ": 12.5,
-        }
-        veh_cost_map = {
-            "<= ₹ 10 Lakh": 10,
-            "> ₹ 10 Lakh <= ₹ 20 Lakh": 15,
-            "> ₹ 20 Lakh <= ₹ 30 Lakh": 25,
-            "> ₹ 30 Lakh <= ₹ 40 Lakh": 35,
-            "> ₹ 40 Lakh ": 40,
-        }
-        cov_map = {"Basic": 1, "Balanced": 2, "Enhanced": 3}
-        miles_map = {
-            "<= 7.5 K": 5,
-            "> 7.5 K & <= 15 K": 11,
-            "> 15 K & <= 25 K": 20,
-            "> 25 K & <= 35 K": 30,
-            "> 35 K & <= 45 K": 40,
-            "> 45 K & <= 55 K": 50,
-            "> 55 K": 60,
-        }
         features = {
             "driver_age": quote.Driver_Age,
             "driving_exp": max(quote.Driving_Exp, 0),
             "risk_score": risk.risk_score,
-            "sal_numeric": sal_map.get(quote.Sal_Range, 6.25),
-            "veh_cost_numeric": veh_cost_map.get(quote.Vehicl_Cost_Range, 15),
-            "cov_numeric": cov_map.get(quote.Coverage, 2),
-            "miles_numeric": miles_map.get(quote.Annual_Miles_Range, 11),
+            "sal_numeric": salary_to_numeric(quote.Sal_Range),
+            "veh_cost_numeric": vehicle_cost_to_numeric(quote.Vehicl_Cost_Range),
+            "cov_numeric": coverage_to_numeric(quote.Coverage),
+            "miles_numeric": miles_to_numeric(quote.Annual_Miles_Range),
             "quoted_premium": quote.Quoted_Premium,
             "prev_accidents": quote.Prev_Accidents,
         }
@@ -96,42 +80,40 @@ class CustomerPersonalizationAgent:
 
     def _enhance_addons(
         self,
-        base_addons: list,
+        base_addons: list[str],
         quote: QuoteInput,
         risk: RiskOutput,
         conversion: ConversionOutput,
-    ) -> list:
+    ) -> list[str]:
         """Dynamically enhance add-on recommendations based on profile."""
         addons = list(base_addons)
+
         if quote.Driver_Age < 25 and "personal_accident_cover" not in addons:
             addons.append("personal_accident_cover")
+
+        high_mileage_ranges = {
+            "> 15 K",
+            "> 15 K & <= 25 K",
+            "> 25 K & <= 35 K",
+            "> 35 K & <= 45 K",
+            "> 45 K & <= 55 K",
+            "> 55 K",
+        }
         if (
-            quote.Annual_Miles_Range
-            in [
-                "> 15 K",
-                "> 15 K & <= 25 K",
-                "> 25 K & <= 35 K",
-                "> 35 K & <= 45 K",
-                "> 45 K & <= 55 K",
-                "> 55 K",
-            ]
+            quote.Annual_Miles_Range in high_mileage_ranges
             and "roadside_assistance" not in addons
         ):
             addons.append("roadside_assistance")
-        if quote.Vehicl_Cost_Range in [
-            "> 30 K",
-            "20 K - 30 K",
-            "> ₹30 Lakh",
-            "₹20L - ₹30L",
-            "> ₹ 30 Lakh <= ₹ 40 Lakh",
-            "> ₹ 40 Lakh ",
-        ]:
+
+        if is_high_vehicle_cost(quote.Vehicl_Cost_Range):
             if "zero_depreciation" not in addons:
                 addons.append("zero_depreciation")
             if "engine_protection" not in addons:
                 addons.append("engine_protection")
+
         if conversion.conversion_probability > 70 and "return_to_invoice" not in addons:
             addons.append("return_to_invoice")
+
         return addons
 
     def _calc_personalization_score(
@@ -156,10 +138,7 @@ class CustomerPersonalizationAgent:
         score += (conversion.conversion_probability / 100) * 0.2
         if quote.Driving_Exp > 10:
             score += 0.05
-        if (
-            quote.Quoted_Premium < 500
-            and plan_data["coverage_level"] == "Comprehensive"
-        ):
+        if quote.Quoted_Premium < 500 and plan_data["coverage_level"] == "Comprehensive":
             score -= 0.1
         return round(min(max(score, 0.1), 1.0), 4)
 
@@ -171,9 +150,11 @@ class CustomerPersonalizationAgent:
         try:
             if not self.loaded:
                 raise RuntimeError("Models not loaded")
+
             features_df = self._extract_features(quote, risk)
             features_scaled = self.scaler.transform(features_df)
             segment = self.kmeans.predict(features_scaled)[0]
+
             plan_data = self.plan_mapper.get(
                 segment,
                 {
@@ -182,16 +163,19 @@ class CustomerPersonalizationAgent:
                     "addons": ["roadside_assistance", "personal_accident_cover"],
                 },
             )
+
             enhanced_addons = self._enhance_addons(
                 plan_data["addons"], quote, risk, conversion
             )
             p_score = self._calc_personalization_score(
                 quote, risk, conversion, plan_data
             )
+
             addon_labels = [
-                ADDON_LABELS.get(a, a.replace("_", " ").title())
-                for a in enhanced_addons
+                ADDON_LABELS.get(addon, addon.replace("_", " ").title())
+                for addon in enhanced_addons
             ]
+
             inference_time = time.time() - start_time
             logger.info(
                 f"Personalization: plan={plan_data['plan']}, segment={segment}, score={p_score}, time={inference_time:.3f}s"
@@ -202,10 +186,10 @@ class CustomerPersonalizationAgent:
                 recommended_addons=addon_labels,
                 personalization_score=p_score,
             )
-        except Exception as e:
+        except Exception as exc:
             inference_time = time.time() - start_time
             logger.error(
-                f"Personalization failed ({inference_time:.3f}s): {e}. Using defaults."
+                f"Personalization failed ({inference_time:.3f}s): {exc}. Using defaults."
             )
             return PersonalizationOutput(
                 recommended_plan="Standard Cover",

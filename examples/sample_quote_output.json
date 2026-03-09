@@ -1,0 +1,45 @@
+{
+  "quote_id": "2d31e8d2-8a9e-49b2-a2f2-a33fbe7d0001",
+  "risk_evaluation": {
+    "risk_score": 24.3,
+    "risk_tier": "LOW",
+    "risk_explanation": "Classified as LOW risk primarily due to Driver_Age."
+  },
+  "fraud_detection": {
+    "fraud_risk_score": 0.06,
+    "fraud_flag": false,
+    "fraud_reason_codes": ["none"],
+    "rule_flags": [],
+    "decision": "CLEAR"
+  },
+  "conversion_prediction": {
+    "conversion_probability": 76.41,
+    "conversion_band": "HIGH",
+    "top_conversion_drivers": ["Quoted_Premium", "Risk_Tier", "Driver_Age"]
+  },
+  "personalization": {
+    "recommended_plan": "Balanced Guard",
+    "coverage_level": "Medium",
+    "recommended_addons": ["24/7 Roadside Assistance", "Personal Accident Cover"],
+    "personalization_score": 0.81
+  },
+  "premium_advice": {
+    "premium_issue": false,
+    "recommended_premium_range": [1200.0, 1200.0],
+    "recommendation_reason": "Premium is competitive and appropriate."
+  },
+  "final_decision": {
+    "decision": "AUTO_APPROVE",
+    "confidence_score": 0.95,
+    "decision_explanation": "Low risk and high conversion. Safe to auto-approve.",
+    "detailed_explanation": {
+      "risk_factor": "Risk Tier is LOW",
+      "conversion_driver": "Conversion Probability is 76.41%",
+      "premium_issue": "Premium is fine"
+    }
+  },
+  "escalation_status": {
+    "escalation_required": false,
+    "reason": "None"
+  }
+}

@@ -1,23 +1,29 @@
+# Python
 __pycache__/
 *.pyc
-venv*/
-node_modules/
 .pytest_cache/
 .coverage
+venv*/
+
+# Local runtime artifacts
 *.log
 *.sqlite
 *.db
 
-# Ignore auto-generated text/json files from scripts
-*.txt
-*.json
-!requirements.txt
+# Generated reports
+test_report.txt
+test_results*.txt
 
-# Next.js
+# JavaScript / frontend
+node_modules/
 .next/
+**/node_modules/
+**/.next/
+
+# Model artifacts generated locally
+*.pkl
+
+# Large packaged outputs
 *.zip
 *.sst
 *.node
-*.pkl
-**/node_modules/
-**/.next/

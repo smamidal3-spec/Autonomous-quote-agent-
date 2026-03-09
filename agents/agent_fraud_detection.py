@@ -4,14 +4,22 @@ Position in pipeline: After Risk Profiler (Step 2 of 6)
 Detects suspicious or inconsistent quote requests using Isolation Forest + Gradient Boosting.
 """
 
-import pandas as pd
-import numpy as np
-import joblib
+import logging
 import os
 import time
-import logging
-from typing import Optional, List
-from agents.schema import QuoteInput, RiskOutput, FraudOutput
+from typing import List, Optional
+
+import joblib
+import pandas as pd
+
+from agents.label_normalization import (
+    coverage_to_numeric,
+    is_high_vehicle_cost,
+    miles_to_numeric,
+    salary_to_numeric,
+    vehicle_cost_to_numeric,
+)
+from agents.schema import FraudOutput, QuoteInput, RiskOutput
 
 logger = logging.getLogger("FraudDetectionAgent")
 
@@ -31,14 +39,14 @@ class FraudDetectionAgent:
             )
             self.loaded = True
             logger.info("Fraud Detection models loaded successfully")
-        except Exception as e:
+        except Exception as exc:
             logger.warning(
-                f"Fraud Detection models not found: {e}. Agent will pass-through."
+                f"Fraud Detection models not found: {exc}. Agent will pass-through."
             )
             self.loaded = False
 
     def _validate_profile(self, quote: QuoteInput) -> Optional[str]:
-        """Step 1: Input Validation"""
+        """Step 1: Input validation checks."""
         if quote.Driver_Age < 18:
             return "Driver age below legal driving age"
         if quote.Driving_Exp > max(0, quote.Driver_Age - 16):
@@ -51,15 +59,15 @@ class FraudDetectionAgent:
             return "Negative values for household data"
         if quote.Driver_Age > 100 or quote.Driving_Exp > 85:
             return "Extremely unrealistic inputs"
-        if quote.Quoted_Premium > 1000000:
+        if quote.Quoted_Premium > 1_000_000:
             return "Extremely unrealistic inputs"
         return None
 
     def _evaluate_rules(
         self, quote: QuoteInput, risk: RiskOutput, sal_num: float, veh_cost_num: float
     ) -> List[str]:
-        """Step 2: Business Rule Engine"""
-        flags = []
+        """Step 2: Business rule engine."""
+        flags: list[str] = []
         if quote.Driver_Age < 23 and veh_cost_num >= 25:
             flags.append("Young driver with luxury vehicle")
         if veh_cost_num > sal_num * 4:
@@ -71,35 +79,12 @@ class FraudDetectionAgent:
         return flags
 
     def _extract_features(self, quote: QuoteInput, risk: RiskOutput) -> pd.DataFrame:
-        """Engineer fraud detection features from quote + risk output."""
-        sal_map = {
-            "<= ₹ 25 Lakh": 2.5,
-            "> ₹ 25 Lakh <= ₹ 40 Lakh": 3.75,
-            "> ₹ 40 Lakh <= ₹ 60 Lakh": 6.25,
-            "> ₹ 60 Lakh <= ₹ 90 Lakh": 8.75,
-            "> ₹ 90 Lakh ": 12.5,
-        }
-        veh_cost_map = {
-            "<= ₹ 10 Lakh": 10,
-            "> ₹ 10 Lakh <= ₹ 20 Lakh": 15,
-            "> ₹ 20 Lakh <= ₹ 30 Lakh": 25,
-            "> ₹ 30 Lakh <= ₹ 40 Lakh": 35,
-            "> ₹ 40 Lakh ": 40,
-        }
-        cov_map = {"Basic": 1, "Balanced": 2, "Enhanced": 3}
-        miles_map = {
-            "<= 7.5 K": 5,
-            "> 7.5 K & <= 15 K": 11,
-            "> 15 K & <= 25 K": 20,
-            "> 25 K & <= 35 K": 30,
-            "> 35 K & <= 45 K": 40,
-            "> 45 K & <= 55 K": 50,
-            "> 55 K": 60,
-        }
-        sal_num = sal_map.get(quote.Sal_Range, 6.25)
-        veh_cost_num = veh_cost_map.get(quote.Vehicl_Cost_Range, 15)
-        cov_num = cov_map.get(quote.Coverage, 2)
-        miles_num = miles_map.get(quote.Annual_Miles_Range, 11)
+        """Engineer fraud-detection features from quote + risk output."""
+        sal_num = salary_to_numeric(quote.Sal_Range)
+        veh_cost_num = vehicle_cost_to_numeric(quote.Vehicl_Cost_Range)
+        cov_num = coverage_to_numeric(quote.Coverage)
+        miles_num = miles_to_numeric(quote.Annual_Miles_Range)
+
         driving_exp = max(quote.Driving_Exp, 0)
         features = {
             "driver_age": quote.Driver_Age,
@@ -127,19 +112,12 @@ class FraudDetectionAgent:
 
     def _generate_reason_codes(
         self, quote: QuoteInput, risk: RiskOutput, fraud_score: float
-    ) -> list:
+    ) -> list[str]:
         """Generate human-readable fraud reason codes."""
-        reasons = []
+        reasons: list[str] = []
         if quote.Prev_Accidents >= 2 and quote.Driving_Exp <= 3:
             reasons.append("high_accident_velocity")
-        if quote.Driver_Age < 23 and quote.Vehicl_Cost_Range in [
-            "> 30 K",
-            "20 K - 30 K",
-            "> ₹30 Lakh",
-            "₹20L - ₹30L",
-            "> ₹ 30 Lakh <= ₹ 40 Lakh",
-            "> ₹ 40 Lakh ",
-        ]:
+        if quote.Driver_Age < 23 and is_high_vehicle_cost(quote.Vehicl_Cost_Range):
             reasons.append("age_vehicle_mismatch")
         if risk.risk_score > 50 and quote.Quoted_Premium < 500:
             reasons.append("premium_risk_mismatch")
@@ -159,6 +137,7 @@ class FraudDetectionAgent:
         try:
             if not self.loaded:
                 raise RuntimeError("Models not loaded")
+
             validation_error = self._validate_profile(quote)
             if validation_error:
                 return FraudOutput(
@@ -168,16 +147,21 @@ class FraudDetectionAgent:
                     rule_flags=[],
                     decision="INVALID_PROFILE",
                 )
+
             features_df = self._extract_features(quote, risk)
             sal_num = features_df["sal_numeric"].iloc[0]
             veh_cost_num = features_df["veh_cost_numeric"].iloc[0]
             rule_flags = self._evaluate_rules(quote, risk, sal_num, veh_cost_num)
+
             features_scaled = self.scaler.transform(features_df)
             iso_score = self.iso_forest.decision_function(features_scaled)[0]
             iso_fraud_score = max(0, min(1, 0.5 - iso_score))
+
             gb_proba = self.gb_model.predict_proba(features_df)[0]
             gb_fraud_prob = gb_proba[1] if len(gb_proba) > 1 else 0.0
+
             fraud_risk_score = round(0.4 * iso_fraud_score + 0.6 * gb_fraud_prob, 4)
+
             fraud_flag = False
             decision = "CLEAR"
             if fraud_risk_score >= 0.5:
@@ -185,11 +169,13 @@ class FraudDetectionAgent:
                 decision = "REVIEW_REQUIRED"
             elif rule_flags:
                 decision = "ESCALATE_RULES"
+
             reason_codes = self._generate_reason_codes(quote, risk, fraud_risk_score)
             inference_time = time.time() - start_time
             logger.info(
                 f"Fraud detection: score={fraud_risk_score:.4f}, flag={fraud_flag}, time={inference_time:.3f}s"
             )
+
             return FraudOutput(
                 fraud_risk_score=fraud_risk_score,
                 fraud_flag=fraud_flag,
@@ -197,10 +183,10 @@ class FraudDetectionAgent:
                 rule_flags=rule_flags,
                 decision=decision,
             )
-        except Exception as e:
+        except Exception as exc:
             inference_time = time.time() - start_time
             logger.error(
-                f"Fraud detection failed ({inference_time:.3f}s): {e}. Passing through safely."
+                f"Fraud detection failed ({inference_time:.3f}s): {exc}. Passing through safely."
             )
             return FraudOutput(
                 fraud_risk_score=0.0,

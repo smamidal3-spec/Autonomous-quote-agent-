@@ -1,44 +1,51 @@
+import logging
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from agents.schema import QuoteInput, PipelineOutput
+
 from agents.pipeline import MultiAgentPipeline
+from agents.schema import PipelineOutput, QuoteInput
 
-app = FastAPI(title="Autonomous Quote Agents API", version="1.0")
+logger = logging.getLogger("quote_api")
 
-# Add CORS Middleware so the Next.js frontend can communicate with the backend
+
+def _parse_allowed_origins() -> list[str]:
+    raw = os.getenv("ALLOWED_ORIGINS", "*")
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+app = FastAPI(title="Autonomous Quote Agents API", version="1.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins (can be restricted to frontend domain later)
-    allow_credentials=True,
+    allow_origins=_parse_allowed_origins(),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 try:
     pipeline = MultiAgentPipeline(models_dir="models")
-except Exception as e:
-    print(f"Failed to load pipeline: {e}")
+except Exception as exc:
+    logger.exception("Failed to load pipeline: %s", exc)
     pipeline = None
 
 
 @app.get("/")
-def read_root():
+def read_root() -> dict[str, str]:
     return {"status": "ok", "message": "Autonomous Quote Agents API is running."}
 
 
 @app.post("/api/v1/evaluate_quote", response_model=PipelineOutput)
-def evaluate_quote(quote: QuoteInput):
-    print("\n" + "=" * 50)
-    print("🚀 [RECEIVED PAYLOAD STRICT LOGGING] 🚀")
-    print(quote.model_dump_json(indent=2))
-    print("=" * 50 + "\n")
+def evaluate_quote(quote: QuoteInput) -> PipelineOutput:
     if not pipeline:
         raise HTTPException(
             status_code=500, detail="Machine learning models not found or loaded."
         )
+
     try:
-        result = pipeline.execute(quote)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.info("Evaluating quote for region=%s agent=%s", quote.Region, quote.Agent_Num)
+        return pipeline.execute(quote)
+    except Exception as exc:
+        logger.exception("Pipeline execution failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))

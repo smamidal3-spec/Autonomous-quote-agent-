@@ -1,15 +1,18 @@
-from agents.schema import QuoteInput, PremiumOutput
+from agents.label_normalization import is_low_salary
+from agents.schema import PremiumOutput, QuoteInput
 
 
 class PremiumAdvisorAgent:
     def process(
         self, quote: QuoteInput, conversion_probability: float, risk_tier: str
     ) -> PremiumOutput:
+        """Recommend premium adjustments using deterministic underwriting rules."""
         issue = False
         reasons = []
         min_p = quote.Quoted_Premium
         max_p = quote.Quoted_Premium
-        if quote.Sal_Range == "<= ₹ 25 Lakh" and quote.Quoted_Premium > 1500:
+
+        if is_low_salary(quote.Sal_Range) and quote.Quoted_Premium > 1500:
             issue = True
             reasons.append("Premium above expected range for salary")
             min_p = quote.Quoted_Premium * 0.70
@@ -22,6 +25,7 @@ class PremiumAdvisorAgent:
         elif risk_tier == "HIGH":
             min_p = quote.Quoted_Premium * 1.10
             max_p = quote.Quoted_Premium * 1.30
+
         reason_str = (
             " | ".join(reasons)
             if reasons
